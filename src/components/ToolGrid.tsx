@@ -35,6 +35,40 @@ interface ToolGridProps {
   icon?: React.ReactNode;
 }
 
+// ─── YouTube helpers ───────────────────────────────────────────────────────────
+function getYouTubeId(url: string): string | null {
+  if (!url) return null;
+  // Suporta: youtu.be/ID, youtube.com/watch?v=ID, youtube.com/embed/ID, youtube.com/shorts/ID
+  const patterns = [
+    /youtu\.be\/([^?&#]+)/,
+    /youtube\.com\/watch\?.*v=([^&#]+)/,
+    /youtube\.com\/embed\/([^?&#]+)/,
+    /youtube\.com\/shorts\/([^?&#]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function YouTubeEmbed({ url }: { url: string }) {
+  const videoId = getYouTubeId(url);
+  if (!videoId) return null;
+
+  return (
+    <div className="w-full h-full">
+      <iframe
+        className="w-full h-full"
+        src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+        title="YouTube video"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  );
+}
+
 // ─── Banner carousel ──────────────────────────────────────────────────────────
 function BannerCarousel({ urls }: { urls: string[] }) {
   const [current, setCurrent] = useState(0);
@@ -110,6 +144,54 @@ function BannerCarousel({ urls }: { urls: string[] }) {
       )}
     </div>
   );
+}
+
+// ─── Right panel: video OR image carousel ─────────────────────────────────────
+function MediaPanel({ tool }: { tool: Tool }) {
+  const hasVideo = !!tool.videoUrl && !!getYouTubeId(tool.videoUrl);
+  const hasBanners = (tool.bannerUrls?.length ?? 0) > 0;
+
+  if (hasVideo) {
+    return (
+      <div className="hidden sm:flex w-160 shrink-0 border-l overflow-hidden items-center justify-center bg-black">
+        <YouTubeEmbed url={tool.videoUrl!} />
+      </div>
+    );
+  }
+
+  if (hasBanners) {
+    return (
+      <div className="hidden sm:block w-160 shrink-0 border-l overflow-hidden">
+        <BannerCarousel urls={tool.bannerUrls!} />
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Mobile version of the media panel
+function MobileMediaPanel({ tool }: { tool: Tool }) {
+  const hasVideo = !!tool.videoUrl && !!getYouTubeId(tool.videoUrl);
+  const hasBanners = (tool.bannerUrls?.length ?? 0) > 0;
+
+  if (hasVideo) {
+    return (
+      <div className="w-full h-52 bg-black shrink-0">
+        <YouTubeEmbed url={tool.videoUrl!} />
+      </div>
+    );
+  }
+
+  if (hasBanners) {
+    return (
+      <div className="w-full h-48 shrink-0">
+        <BannerCarousel urls={tool.bannerUrls!} />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -248,6 +330,10 @@ export function ToolGrid({ tools, title, icon }: ToolGridProps) {
     window.open(tool.url, "_blank");
   }
 
+  const hasRightPanel = (t: Tool | null) =>
+    (t?.bannerUrls?.length ?? 0) > 0 ||
+    (!!t?.videoUrl && !!getYouTubeId(t.videoUrl));
+
   if (updatedTools.length === 0) {
     return (
       <div className="text-center py-12">
@@ -255,8 +341,6 @@ export function ToolGrid({ tools, title, icon }: ToolGridProps) {
       </div>
     );
   }
-
-  const hasBanner = (t: Tool | null) => (t?.bannerUrls?.length ?? 0) > 0;
 
   return (
     <>
@@ -306,12 +390,12 @@ export function ToolGrid({ tools, title, icon }: ToolGridProps) {
             <DialogContent
               className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:backdrop-blur-md [&>button]:border [&>button]:border-border/50 [&>button]:rounded-full [&>button]:opacity-100 [&>button]:shadow-lg [&>button]:shadow-black/10 [&>button]:transition-all [&>button]:duration-200 hover:[&>button]:bg-accent hover:[&>button]:scale-110 hover:[&>button]:shadow-xl"
               style={{
-                maxWidth: hasBanner(selectedTool) ? "1100px" : "460px",
+                maxWidth: hasRightPanel(selectedTool) ? "1100px" : "460px",
                 width: "calc(100% - 2rem)",
               }}
             >
               <div
-                className={`flex ${hasBanner(selectedTool) ? "min-h-95" : "min-h-auto"}`}
+                className={`flex ${hasRightPanel(selectedTool) ? "min-h-95" : "min-h-auto"}`}
               >
                 {/* ── LEFT: content ── */}
                 <div className="flex-1 flex flex-col p-6 min-w-0 min-h-80">
@@ -369,7 +453,6 @@ export function ToolGrid({ tools, title, icon }: ToolGridProps) {
                     </button>
                   </div>
 
-                  {/* Spacer que empurra o botão para o fundo */}
                   <div className="flex-1" />
 
                   <button
@@ -380,12 +463,8 @@ export function ToolGrid({ tools, title, icon }: ToolGridProps) {
                   </button>
                 </div>
 
-                {/* ── RIGHT: carousel ── */}
-                {hasBanner(selectedTool) && (
-                  <div className="hidden sm:block w-160 shrink-0 border-l overflow-hidden">
-                    <BannerCarousel urls={selectedTool.bannerUrls!} />
-                  </div>
-                )}
+                {/* ── RIGHT: video or image carousel ── */}
+                <MediaPanel tool={selectedTool} />
               </div>
             </DialogContent>
           )}
@@ -399,16 +478,12 @@ export function ToolGrid({ tools, title, icon }: ToolGridProps) {
             <button
               title="fechar"
               onClick={() => setSelectedTool(null)}
-              className="absolute right-4 top-4 z-10 bg-neutral-700 rounded-full"
+              className="absolute right-4 top-4 z-10 bg-neutral-700 rounded-full p-0.5"
             >
               <X size={20} />
             </button>
 
-            {hasBanner(selectedTool) && (
-              <div className="w-full h-48 shrink-0">
-                <BannerCarousel urls={selectedTool.bannerUrls!} />
-              </div>
-            )}
+            <MobileMediaPanel tool={selectedTool} />
 
             <div className="p-6 overflow-y-auto flex flex-col flex-1">
               <div className="flex items-center gap-3 mb-3">
@@ -446,7 +521,6 @@ export function ToolGrid({ tools, title, icon }: ToolGridProps) {
                 </button>
               </div>
 
-              {/* Spacer que empurra o botão para o fundo no mobile */}
               <div className="flex-1" />
 
               <button

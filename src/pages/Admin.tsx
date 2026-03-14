@@ -37,6 +37,7 @@ import {
   Upload,
   ImageIcon,
   Images,
+  Youtube,
 } from "lucide-react";
 import { categories } from "@/components/ToolFilters";
 
@@ -52,6 +53,7 @@ interface Tool {
   tags: string[];
   imageUrl?: string;
   bannerUrls?: string[];
+  videoUrl?: string;
   url?: string;
 }
 
@@ -64,6 +66,23 @@ interface FormData {
   tags: string;
   imageUrl: string;
   url: string;
+  videoUrl: string;
+}
+
+// ─── YouTube ID extractor ─────────────────────────────────────────────────────
+function getYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    /youtu\.be\/([^?&#]+)/,
+    /youtube\.com\/watch\?.*v=([^&#]+)/,
+    /youtube\.com\/embed\/([^?&#]+)/,
+    /youtube\.com\/shorts\/([^?&#]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
 }
 
 // ─── upload helper ────────────────────────────────────────────────────────────
@@ -112,7 +131,6 @@ function LogoField({
       alert("Máximo 2MB.");
       return;
     }
-    // ✅ FIX: limpa URL manual ao selecionar arquivo
     onUrlChange("");
     onFileChange(f, URL.createObjectURL(f));
   }
@@ -196,10 +214,75 @@ function LogoField({
   );
 }
 
+// ─── YouTube video field ──────────────────────────────────────────────────────
+interface VideoFieldProps {
+  value: string;
+  onChange: (url: string) => void;
+}
+function VideoField({ value, onChange }: VideoFieldProps) {
+  const videoId = getYouTubeId(value);
+  const isValid = !!videoId;
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <label className="text-sm font-medium flex items-center gap-1.5">
+          <Youtube className="h-4 w-4 text-red-500" /> Vídeo do YouTube
+        </label>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Cole o link do vídeo. Aparece no lugar do carrossel de imagens.
+          <br />
+          <span className="text-amber-600 dark:text-amber-400">
+            ⚠️ Se tiver vídeo, as imagens do banner são ignoradas.
+          </span>
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          placeholder="https://www.youtube.com/watch?v=..."
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={value && !isValid ? "border-red-400" : ""}
+        />
+        {value && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onChange("")}
+            className="shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {value && !isValid && (
+        <p className="text-xs text-red-500">
+          Link inválido. Use um link do YouTube válido.
+        </p>
+      )}
+
+      {isValid && (
+        <div className="rounded-lg overflow-hidden border aspect-video bg-black">
+          <iframe
+            className="w-full h-full"
+            src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+            title="Preview do vídeo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── multi-image banner field ─────────────────────────────────────────────────
 interface BannerFieldProps {
   items: BannerItem[];
   onChange: (items: BannerItem[]) => void;
+  disabled?: boolean;
 }
 interface BannerItem {
   id: string;
@@ -211,7 +294,7 @@ interface BannerItem {
   url?: string;
 }
 
-function BannerField({ items, onChange }: BannerFieldProps) {
+function BannerField({ items, onChange, disabled }: BannerFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
 
@@ -259,13 +342,13 @@ function BannerField({ items, onChange }: BannerFieldProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${disabled ? "opacity-40 pointer-events-none" : ""}`}>
       <div>
         <label className="text-sm font-medium flex items-center gap-1.5">
           <Images className="h-4 w-4" /> Imagens do banner (carrossel)
         </label>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Aparecem no painel esquerdo do modal. Você pode adicionar várias.
+          Aparecem no painel esquerdo do modal. Ignoradas se houver vídeo.
         </p>
       </div>
 
@@ -397,6 +480,7 @@ export default function AdminTools() {
     tags: "",
     imageUrl: "",
     url: "",
+    videoUrl: "",
   });
 
   useEffect(() => {
@@ -420,12 +504,16 @@ export default function AdminTools() {
       alert("Preencha Nome, Descrição e URL.");
       return;
     }
+
+    // Validar YouTube URL se preenchida
+    if (form.videoUrl && !getYouTubeId(form.videoUrl)) {
+      alert("Link do YouTube inválido. Corrija ou deixe em branco.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // ✅ FIX: usa logoPreview como fallback para quando URL foi colada diretamente
       let imageUrl = form.imageUrl || logoPreview;
-
-      // Se há arquivo de logo pendente, faz upload e sobrescreve
       if (logoFile) {
         imageUrl = await uploadFile(logoFile, setLogoProgress);
       }
@@ -452,6 +540,7 @@ export default function AdminTools() {
         uses: Number(form.uses) || 0,
         imageUrl: imageUrl || "",
         bannerUrls: finalBannerUrls,
+        videoUrl: form.videoUrl || "",
         url: form.url,
         updatedAt: new Date(),
       };
@@ -499,6 +588,7 @@ export default function AdminTools() {
       tags: "",
       imageUrl: "",
       url: "",
+      videoUrl: "",
     });
     setEditingTool(null);
     setLogoFile(null);
@@ -518,6 +608,7 @@ export default function AdminTools() {
       tags: tool.tags?.join(", ") || "",
       imageUrl: tool.imageUrl || "",
       url: tool.url || "",
+      videoUrl: tool.videoUrl || "",
     });
     setLogoPreview(tool.imageUrl || "");
     setLogoFile(null);
@@ -545,6 +636,8 @@ export default function AdminTools() {
     (currentPage - 1) * ITEMS,
     currentPage * ITEMS,
   );
+
+  const hasVideo = (t: Tool) => !!t.videoUrl && !!getYouTubeId(t.videoUrl);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -635,7 +728,12 @@ export default function AdminTools() {
                   <span className="px-2 py-1 bg-muted rounded-md">
                     👎 {tool.dislikes || 0}
                   </span>
-                  {(tool.bannerUrls?.length ?? 0) > 0 && (
+                  {hasVideo(tool) && (
+                    <span className="px-2 py-1 bg-red-500/10 text-red-600 rounded-md flex items-center gap-1">
+                      <Youtube className="h-3 w-3" /> Vídeo
+                    </span>
+                  )}
+                  {!hasVideo(tool) && (tool.bannerUrls?.length ?? 0) > 0 && (
                     <span className="px-2 py-1 bg-blue-500/10 text-blue-600 rounded-md">
                       🖼️ {tool.bannerUrls!.length} banner
                       {tool.bannerUrls!.length > 1 ? "s" : ""}
@@ -742,7 +840,20 @@ export default function AdminTools() {
 
             <div className="h-px bg-border" />
 
-            <BannerField items={bannerItems} onChange={setBannerItems} />
+            {/* ── YouTube video field ── */}
+            <VideoField
+              value={form.videoUrl}
+              onChange={(url) => setForm((v) => ({ ...v, videoUrl: url }))}
+            />
+
+            <div className="h-px bg-border" />
+
+            {/* Banner field — dimmed when video is set */}
+            <BannerField
+              items={bannerItems}
+              onChange={setBannerItems}
+              disabled={!!form.videoUrl && !!getYouTubeId(form.videoUrl)}
+            />
 
             <div className="h-px bg-border" />
 

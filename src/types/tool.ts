@@ -8,6 +8,7 @@ export interface Tool {
   uses: number;
   imageUrl: string;      // logo – aparece no card e ao lado do nome no modal
   bannerUrls?: string[]; // múltiplas imagens – carrossel no painel esquerdo do modal
+  videoUrl?: string;     // link do YouTube – exibido no lugar do carrossel de imagens
   icon?: any;
   iconColor?: string;
   tags: string[];
