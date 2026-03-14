@@ -304,8 +304,8 @@ export function ToolGrid({ tools, title, icon }: ToolGridProps) {
         >
           {selectedTool && (
             <DialogContent
-className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:backdrop-blur-md [&>button]:border [&>button]:border-border/50 [&>button]:rounded-full [&>button]:opacity-100 [&>button]:shadow-lg [&>button]:shadow-black/10 [&>button]:transition-all [&>button]:duration-200 hover:[&>button]:bg-accent hover:[&>button]:scale-110 hover:[&>button]:shadow-xl"              style={{
-                // ALTERADO: maxWidth maior para acomodar painel de imagem maior
+              className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:backdrop-blur-md [&>button]:border [&>button]:border-border/50 [&>button]:rounded-full [&>button]:opacity-100 [&>button]:shadow-lg [&>button]:shadow-black/10 [&>button]:transition-all [&>button]:duration-200 hover:[&>button]:bg-accent hover:[&>button]:scale-110 hover:[&>button]:shadow-xl"
+              style={{
                 maxWidth: hasBanner(selectedTool) ? "1100px" : "460px",
                 width: "calc(100% - 2rem)",
               }}
@@ -313,8 +313,8 @@ className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:back
               <div
                 className={`flex ${hasBanner(selectedTool) ? "min-h-95" : "min-h-auto"}`}
               >
-                {/* ── LEFT: content — ORIGINAL, sem nenhuma alteração ── */}
-                <div className="flex-1 flex flex-col p-6 min-w-0 overflow-y-auto min-h-80">
+                {/* ── LEFT: content ── */}
+                <div className="flex-1 flex flex-col p-6 min-w-0 min-h-80">
                   <DialogHeader className="mb-3">
                     <div className="flex items-center gap-3 pr-6">
                       {selectedTool.imageUrl && (
@@ -369,6 +369,9 @@ className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:back
                     </button>
                   </div>
 
+                  {/* Spacer que empurra o botão para o fundo */}
+                  <div className="flex-1" />
+
                   <button
                     onClick={() => handleVisit(selectedTool)}
                     className="mt-5 w-full bg-primary text-primary-foreground py-2.5 rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
@@ -377,7 +380,7 @@ className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:back
                   </button>
                 </div>
 
-                {/* ── RIGHT: carousel — ALTERADO: w-85 → w-[640px] ── */}
+                {/* ── RIGHT: carousel ── */}
                 {hasBanner(selectedTool) && (
                   <div className="hidden sm:block w-160 shrink-0 border-l overflow-hidden">
                     <BannerCarousel urls={selectedTool.bannerUrls!} />
@@ -389,7 +392,7 @@ className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:back
         </Dialog>
       )}
 
-      {/* ── MOBILE OVERLAY — ORIGINAL, sem nenhuma alteração ── */}
+      {/* ── MOBILE OVERLAY ── */}
       {isMobileOverlay && selectedTool && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end">
           <div className="bg-background w-full rounded-t-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
@@ -407,7 +410,7 @@ className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:back
               </div>
             )}
 
-            <div className="p-6 overflow-y-auto">
+            <div className="p-6 overflow-y-auto flex flex-col flex-1">
               <div className="flex items-center gap-3 mb-3">
                 {selectedTool.imageUrl && (
                   <img
@@ -442,6 +445,9 @@ className="p-0 overflow-hidden gap-0 [&>button]:bg-background/95 [&>button]:back
                   <ThumbsDown size={18} /> {selectedTool.dislikes || 0}
                 </button>
               </div>
+
+              {/* Spacer que empurra o botão para o fundo no mobile */}
+              <div className="flex-1" />
 
               <button
                 onClick={() => handleVisit(selectedTool)}
